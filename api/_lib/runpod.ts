@@ -241,52 +241,65 @@ export class RunPodBackend {
     templateId: string,
     name: string = 'influence-dashboard-training'
   ): Promise<string> {
-    const response = await fetch('https://api.runpod.ai/v2/endpoints', {
+    const mutation = `
+      mutation {
+        saveEndpoint(input: {
+          name: "${name}"
+          templateId: "${templateId}"
+          workersMin: 0
+          workersMax: 1
+          idleTimeout: 5
+          gpuIds: "AMPERE_48"
+          scalerType: "QUEUE_DELAY"
+          scalerValue: 1
+        }) {
+          id
+          name
+        }
+      }
+    `;
+
+    const response = await fetch('https://api.runpod.io/graphql?api_key=' + apiKey, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        name,
-        templateId,
-        workersMin: 0,
-        workersMax: 1,
-        idleTimeout: 300,
-        gpuIds: 'AMPERE_48',
-        scalerType: 'QUEUE_DELAY',
-        scalerValue: 1,
-      }),
+      body: JSON.stringify({ query: mutation }),
     });
 
     if (!response.ok) {
-      let errorMessage: string;
-      try {
-        const errorBody = await response.json();
-        errorMessage =
-          (errorBody as Record<string, string>).error ||
-          (errorBody as Record<string, string>).message ||
-          JSON.stringify(errorBody);
-      } catch {
-        errorMessage = `Failed to create RunPod endpoint: ${response.status} ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
+      throw new Error(`Failed to create RunPod endpoint: ${response.status} ${response.statusText}`);
     }
 
-    const data = (await response.json()) as RunPodCreateEndpointResponse;
-    return data.id;
+    const data = await response.json() as {
+      data?: { saveEndpoint?: { id: string } };
+      errors?: Array<{ message: string }>;
+    };
+
+    if (data.errors && data.errors.length > 0) {
+      throw new Error(`Failed to create RunPod endpoint: ${data.errors[0].message}`);
+    }
+
+    if (!data.data?.saveEndpoint?.id) {
+      throw new Error('Failed to create RunPod endpoint: no ID returned');
+    }
+
+    return data.data.saveEndpoint.id;
   }
 
   /**
-   * Validate a RunPod API key by calling the pods endpoint.
+   * Validate a RunPod API key by querying the GraphQL API.
    * Returns true if the key is valid, throws on error.
    */
   static async validateApiKey(apiKey: string): Promise<boolean> {
-    const response = await fetch('https://api.runpod.ai/v2/pods', {
-      method: 'GET',
+    const response = await fetch('https://api.runpod.io/graphql?api_key=' + apiKey, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        query: '{ myself { id } }',
+      }),
     });
 
     if (!response.ok) {
@@ -294,6 +307,11 @@ export class RunPodBackend {
         throw new Error('Invalid RunPod API key');
       }
       throw new Error(`RunPod API returned status ${response.status}`);
+    }
+
+    const data = await response.json() as { errors?: Array<{ message: string }> };
+    if (data.errors && data.errors.length > 0) {
+      throw new Error('Invalid RunPod API key');
     }
 
     return true;
