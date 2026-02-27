@@ -52,7 +52,7 @@ export default async function handler(
 async function handleGet(userId: string, res: VercelResponse): Promise<void> {
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
-    .select('runpod_api_key_encrypted, runpod_endpoint_id, hf_token_encrypted')
+    .select('*')
     .eq('id', userId)
     .single();
 

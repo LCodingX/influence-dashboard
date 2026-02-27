@@ -75,7 +75,7 @@ export default async function handler(
     // Fetch user's RunPod credentials and HF token from their profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('runpod_api_key_encrypted, runpod_endpoint_id, hf_token_encrypted')
+      .select('*')
       .eq('id', user.id)
       .single();
 

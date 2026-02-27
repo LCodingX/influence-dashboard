@@ -50,7 +50,7 @@ export default async function handler(
 async function handleGet(userId: string, res: VercelResponse): Promise<void> {
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
-    .select('hf_token_encrypted')
+    .select('*')
     .eq('id', userId)
     .single();
 
