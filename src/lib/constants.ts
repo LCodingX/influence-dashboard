@@ -1,10 +1,10 @@
 import type { ModelInfo, ModelTier, Hyperparams, InfluenceMethod, RunPodGpuId } from './types';
 
 export const MODELS: ModelInfo[] = [
-  { id: 'google/gemma-3-1b', name: 'Gemma 3 1B', params: '1B', tier: 'small', gpu: 'A10 24GB', costPerHour: 1.12 },
+  { id: 'google/gemma-3-1b-it', name: 'Gemma 3 1B', params: '1B', tier: 'small', gpu: 'A10 24GB', costPerHour: 1.12 },
   { id: 'meta-llama/Llama-3.2-3B', name: 'Llama 3.2 3B', params: '3B', tier: 'small', gpu: 'A10 24GB', costPerHour: 1.12 },
   { id: 'microsoft/phi-4-mini', name: 'Phi-4 Mini', params: '3.8B', tier: 'small', gpu: 'A10 24GB', costPerHour: 1.12 },
-  { id: 'google/gemma-3-12b', name: 'Gemma 3 12B', params: '12B', tier: 'medium', gpu: 'L40S 48GB', costPerHour: 2.48 },
+  { id: 'google/gemma-3-12b-it', name: 'Gemma 3 12B', params: '12B', tier: 'medium', gpu: 'L40S 48GB', costPerHour: 2.48 },
   { id: 'meta-llama/Llama-3.1-8B', name: 'Llama 3.1 8B', params: '8B', tier: 'medium', gpu: 'L40S 48GB', costPerHour: 2.48 },
   { id: 'mistralai/Mistral-7B-v0.3', name: 'Mistral 7B', params: '7B', tier: 'medium', gpu: 'L40S 48GB', costPerHour: 2.48 },
   { id: 'meta-llama/Llama-3.3-33B', name: 'Llama 3.3 33B', params: '33B', tier: 'large', gpu: 'A100 80GB', costPerHour: 5.00 },
