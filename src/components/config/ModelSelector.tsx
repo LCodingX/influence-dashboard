@@ -51,7 +51,7 @@ function ModelOptionRow({
             <Cpu className="h-3 w-3" />
             {model.gpu}
           </span>
-          <span>${model.costPerHour.toFixed(2)}/hr</span>
+          <span>${(model.costPerHour ?? 0).toFixed(2)}/hr</span>
         </div>
       </div>
     </button>
@@ -253,7 +253,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
             {selectedModel.gpu}
           </span>
           <span>
-            ${selectedModel.costPerHour.toFixed(2)}/hr estimated
+            ${(selectedModel.costPerHour ?? 0).toFixed(2)}/hr estimated
           </span>
         </div>
       )}

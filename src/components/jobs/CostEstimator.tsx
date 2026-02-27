@@ -64,13 +64,13 @@ export function CostEstimator({
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-400">Training</span>
           <span className="text-xs font-mono text-slate-200">
-            ${estimate.trainingCost.toFixed(2)}
+            ${(estimate.trainingCost ?? 0).toFixed(2)}
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-400">Influence computation</span>
           <span className="text-xs font-mono text-slate-200">
-            ${estimate.influenceCost.toFixed(2)}
+            ${(estimate.influenceCost ?? 0).toFixed(2)}
           </span>
         </div>
         <div className="border-t border-navy-700 pt-2 flex items-center justify-between">
@@ -80,7 +80,7 @@ export function CostEstimator({
               isExpensive ? 'text-amber-400' : 'text-emerald-400'
             }`}
           >
-            ${estimate.totalCost.toFixed(2)}
+            ${(estimate.totalCost ?? 0).toFixed(2)}
           </span>
         </div>
       </div>
