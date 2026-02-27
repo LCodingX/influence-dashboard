@@ -72,10 +72,10 @@ export default async function handler(
       return;
     }
 
-    // Fetch user's RunPod credentials from their profile
+    // Fetch user's RunPod credentials and HF token from their profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('runpod_api_key_encrypted, runpod_endpoint_id')
+      .select('runpod_api_key_encrypted, runpod_endpoint_id, hf_token_encrypted')
       .eq('id', user.id)
       .single();
 
@@ -99,6 +99,16 @@ export default async function handler(
         error: 'Failed to decrypt RunPod API key. Please reconfigure your key in settings.',
       });
       return;
+    }
+
+    // Decrypt HuggingFace token if present (optional — only needed for gated models)
+    let decryptedHfToken: string | null = null;
+    if (profile.hf_token_encrypted) {
+      try {
+        decryptedHfToken = decrypt(profile.hf_token_encrypted as string);
+      } catch {
+        // HF token decryption failure is non-fatal; proceed without it
+      }
     }
 
     const endpointId = profile.runpod_endpoint_id as string | null;
@@ -161,6 +171,7 @@ export default async function handler(
         influence_method: body.influence_method,
         checkpoint_interval: body.checkpoint_interval || 10,
         callback_url: callbackUrl,
+        hf_token: decryptedHfToken,
       });
 
       // Update job with the RunPod job ID

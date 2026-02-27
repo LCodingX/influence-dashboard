@@ -3,6 +3,7 @@ import { useComputeBackend } from '@/hooks/useComputeBackend';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BackendConfig } from '@/components/config/BackendConfig';
+import { HuggingFaceConfig } from '@/components/config/HuggingFaceConfig';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -44,6 +45,13 @@ export function SettingsPage() {
 
             {/* Compute Backend section */}
             <BackendConfig
+              settings={settings}
+              loading={settingsLoading}
+              onRefresh={refreshSettings}
+            />
+
+            {/* HuggingFace Token section */}
+            <HuggingFaceConfig
               settings={settings}
               loading={settingsLoading}
               onRefresh={refreshSettings}

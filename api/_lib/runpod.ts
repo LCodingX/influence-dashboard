@@ -7,6 +7,7 @@ export interface TrainJobConfig {
   influence_method: string;
   checkpoint_interval: number;
   callback_url: string;
+  hf_token?: string | null;
 }
 
 export interface JobStatusResult {
@@ -150,6 +151,7 @@ export class RunPodBackend {
           influence_method: config.influence_method,
           checkpoint_interval: config.checkpoint_interval,
           callback_url: config.callback_url,
+          hf_token: config.hf_token ?? null,
         },
       }),
     });

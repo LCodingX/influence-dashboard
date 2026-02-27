@@ -147,4 +147,5 @@ export interface UserProfile {
 export interface ComputeSettings {
   runpod_key_last4: string | null;
   runpod_endpoint_id: string | null;
+  hf_token_last4: string | null;
 }

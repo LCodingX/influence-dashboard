@@ -52,7 +52,7 @@ export default async function handler(
 async function handleGet(userId: string, res: VercelResponse): Promise<void> {
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
-    .select('runpod_api_key_encrypted, runpod_endpoint_id')
+    .select('runpod_api_key_encrypted, runpod_endpoint_id, hf_token_encrypted')
     .eq('id', userId)
     .single();
 
@@ -72,9 +72,20 @@ async function handleGet(userId: string, res: VercelResponse): Promise<void> {
     }
   }
 
+  let hfTokenLastFour: string | null = null;
+  if (profile.hf_token_encrypted) {
+    try {
+      const decryptedToken = decrypt(profile.hf_token_encrypted as string);
+      hfTokenLastFour = decryptedToken.slice(-4);
+    } catch {
+      hfTokenLastFour = null;
+    }
+  }
+
   res.status(200).json({
     runpod_key_last4: keyLastFour,
     runpod_endpoint_id: profile.runpod_endpoint_id || null,
+    hf_token_last4: hfTokenLastFour,
   });
 }
 
