@@ -3,7 +3,6 @@ import { useComputeBackend } from '@/hooks/useComputeBackend';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BackendConfig } from '@/components/config/BackendConfig';
-import { HuggingFaceConfig } from '@/components/config/HuggingFaceConfig';
 import { DeviceManager } from '@/components/config/DeviceManager';
 
 export function SettingsPage() {
@@ -53,13 +52,6 @@ export function SettingsPage() {
 
             {/* GPU Devices section — only show when RunPod key is configured */}
             {settings?.runpod_key_last4 && <DeviceManager />}
-
-            {/* HuggingFace Token section */}
-            <HuggingFaceConfig
-              settings={settings}
-              loading={settingsLoading}
-              onRefresh={refreshSettings}
-            />
           </div>
         </main>
       </div>

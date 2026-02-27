@@ -102,14 +102,22 @@ export default async function handler(
       return;
     }
 
-    // Decrypt HuggingFace token if present (optional — only needed for gated models)
-    let decryptedHfToken: string | null = null;
-    if (profile.hf_token_encrypted) {
-      try {
-        decryptedHfToken = decrypt(profile.hf_token_encrypted as string);
-      } catch {
-        // HF token decryption failure is non-fatal; proceed without it
-      }
+    // Decrypt HuggingFace token (required for gated model downloads)
+    if (!profile.hf_token_encrypted) {
+      res.status(400).json({
+        error: 'HuggingFace token not configured. Please set up your keys in settings.',
+      });
+      return;
+    }
+
+    let decryptedHfToken: string;
+    try {
+      decryptedHfToken = decrypt(profile.hf_token_encrypted as string);
+    } catch {
+      res.status(500).json({
+        error: 'Failed to decrypt HuggingFace token. Please reconfigure your keys in settings.',
+      });
+      return;
     }
 
     // Resolve endpoint ID: device_id → devices table → default device → profile fallback

@@ -20,9 +20,9 @@ interface BackendConfigProps {
 }
 
 interface SaveKeyResponse {
-  success: boolean;
-  last4: string;
-  endpoint_id: string | null;
+  runpod_key_last4: string;
+  runpod_endpoint_id: string | null;
+  hf_token_last4: string;
 }
 
 interface RemoveKeyResponse {
@@ -31,7 +31,9 @@ interface RemoveKeyResponse {
 
 export function BackendConfig({ settings, loading, onRefresh }: BackendConfigProps) {
   const [apiKey, setApiKey] = useState('');
+  const [hfToken, setHfToken] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [showHfToken, setShowHfToken] = useState(false);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -39,27 +41,32 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
   const hasKey = settings?.runpod_key_last4 != null;
   const hasEndpoint = settings?.runpod_endpoint_id != null;
 
-  const handleSaveKey = useCallback(async () => {
-    if (!apiKey.trim()) return;
+  const handleSaveKeys = useCallback(async () => {
+    if (!apiKey.trim() || !hfToken.trim()) return;
     setSaving(true);
     setSaveError(null);
     try {
       await apiCall<SaveKeyResponse>('/api/settings/runpod-key', {
         method: 'POST',
-        body: JSON.stringify({ api_key: apiKey.trim() }),
+        body: JSON.stringify({
+          api_key: apiKey.trim(),
+          hf_token: hfToken.trim(),
+        }),
       });
       setApiKey('');
+      setHfToken('');
       setShowKey(false);
+      setShowHfToken(false);
       onRefresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save API key';
+      const message = err instanceof Error ? err.message : 'Failed to save keys';
       setSaveError(message);
     } finally {
       setSaving(false);
     }
-  }, [apiKey, onRefresh]);
+  }, [apiKey, hfToken, onRefresh]);
 
-  const handleRemoveKey = useCallback(async () => {
+  const handleRemoveKeys = useCallback(async () => {
     setRemoving(true);
     setSaveError(null);
     try {
@@ -68,21 +75,23 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
       });
       onRefresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove API key';
+      const message = err instanceof Error ? err.message : 'Failed to remove keys';
       setSaveError(message);
     } finally {
       setRemoving(false);
     }
   }, [onRefresh]);
 
+  const clearError = () => setSaveError(null);
+
   return (
     <div className="rounded-lg border border-navy-700 bg-navy-800 p-6">
       <div className="flex items-center gap-2">
         <Key className="h-4 w-4 text-slate-300" />
-        <h2 className="text-sm font-medium text-slate-50">RunPod API Key</h2>
+        <h2 className="text-sm font-medium text-slate-50">Compute &amp; Model Access</h2>
       </div>
       <p className="mt-1 text-xs text-slate-400">
-        Your RunPod API key is used to run training and influence computation jobs on serverless GPUs.
+        Your RunPod API key runs training jobs on serverless GPUs. Your HuggingFace token is required to download model weights.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -93,11 +102,12 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
           </div>
         ) : hasKey ? (
           <div className="space-y-3">
+            {/* RunPod key status */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-emerald-400" />
                 <span className="text-sm text-slate-200">
-                  Key saved:{' '}
+                  RunPod key:{' '}
                   <span className="font-mono text-xs text-slate-400">
                     ****{settings?.runpod_key_last4}
                   </span>
@@ -105,7 +115,7 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
               </div>
               <button
                 type="button"
-                onClick={handleRemoveKey}
+                onClick={handleRemoveKeys}
                 disabled={removing}
                 className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-rose-400 transition-colors duration-150 hover:bg-rose-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -114,10 +124,22 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
                 ) : (
                   <Trash2 className="h-3 w-3" />
                 )}
-                Remove Key
+                Remove Keys
               </button>
             </div>
 
+            {/* HF token status */}
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm text-slate-200">
+                HuggingFace token:{' '}
+                <span className="font-mono text-xs text-slate-400">
+                  ****{settings?.hf_token_last4}
+                </span>
+              </span>
+            </div>
+
+            {/* Endpoint status */}
             <div className="flex items-center gap-2">
               {hasEndpoint ? (
                 <>
@@ -139,36 +161,62 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="relative">
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  setSaveError(null);
-                }}
-                placeholder="rp_xxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full rounded-lg border border-navy-700 bg-navy-900 py-2.5 pl-3 pr-10 font-mono text-sm text-slate-50 placeholder:text-slate-500 transition-colors duration-150 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-                autoComplete="off"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey((prev) => !prev)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 transition-colors duration-150 hover:text-slate-300"
-                aria-label={showKey ? 'Hide API key' : 'Show API key'}
-              >
-                {showKey ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
+            {/* RunPod API key input */}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">RunPod API Key</label>
+              <div className="relative">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    clearError();
+                  }}
+                  placeholder="rp_xxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full rounded-lg border border-navy-700 bg-navy-900 py-2.5 pl-3 pr-10 font-mono text-sm text-slate-50 placeholder:text-slate-500 transition-colors duration-150 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 transition-colors duration-150 hover:text-slate-300"
+                  aria-label={showKey ? 'Hide API key' : 'Show API key'}
+                >
+                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* HuggingFace token input */}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">HuggingFace Token</label>
+              <div className="relative">
+                <input
+                  type={showHfToken ? 'text' : 'password'}
+                  value={hfToken}
+                  onChange={(e) => {
+                    setHfToken(e.target.value);
+                    clearError();
+                  }}
+                  placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full rounded-lg border border-navy-700 bg-navy-900 py-2.5 pl-3 pr-10 font-mono text-sm text-slate-50 placeholder:text-slate-500 transition-colors duration-150 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowHfToken((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 transition-colors duration-150 hover:text-slate-300"
+                  aria-label={showHfToken ? 'Hide token' : 'Show token'}
+                >
+                  {showHfToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <button
               type="button"
-              onClick={handleSaveKey}
-              disabled={saving || !apiKey.trim()}
+              onClick={handleSaveKeys}
+              disabled={saving || !apiKey.trim() || !hfToken.trim()}
               className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -187,20 +235,31 @@ export function BackendConfig({ settings, loading, onRefresh }: BackendConfigPro
         <div className="flex items-start gap-2 text-[11px] text-slate-500">
           <Shield className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
           <span>
-            Your API key is encrypted at rest and only used to manage serverless
-            endpoints and submit training jobs.
+            Both keys are encrypted at rest. The RunPod key manages serverless endpoints.
+            The HuggingFace token is sent to the worker to download model weights.
           </span>
         </div>
 
-        <a
-          href="https://runpod.io"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue-400 transition-colors duration-150 hover:text-blue-300"
-        >
-          Don&apos;t have a RunPod account? Sign up at runpod.io
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        <div className="flex gap-3">
+          <a
+            href="https://runpod.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-blue-400 transition-colors duration-150 hover:text-blue-300"
+          >
+            Get a RunPod key
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href="https://huggingface.co/settings/tokens"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-blue-400 transition-colors duration-150 hover:text-blue-300"
+          >
+            Get a HuggingFace token
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       </div>
     </div>
   );

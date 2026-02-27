@@ -6,6 +6,7 @@ import { RunPodBackend } from '../_lib/runpod.js';
 
 interface PostBody {
   api_key: string;
+  hf_token: string;
 }
 
 export default async function handler(
@@ -105,7 +106,13 @@ async function handlePost(
     return;
   }
 
+  if (!body.hf_token || typeof body.hf_token !== 'string' || body.hf_token.trim().length === 0) {
+    res.status(400).json({ error: 'hf_token is required' });
+    return;
+  }
+
   const apiKey = body.api_key.trim();
+  const hfToken = body.hf_token.trim();
 
   // Validate the API key by calling RunPod
   try {
@@ -117,8 +124,9 @@ async function handlePost(
     return;
   }
 
-  // Encrypt the API key
+  // Encrypt both keys
   const encryptedKey = encrypt(apiKey);
+  const encryptedHfToken = encrypt(hfToken);
 
   // Check if user already has an endpoint, otherwise create one
   const { data: profile, error: fetchError } = await supabaseAdmin
@@ -163,6 +171,7 @@ async function handlePost(
     .update({
       compute_backend: 'runpod',
       runpod_api_key_encrypted: encryptedKey,
+      hf_token_encrypted: encryptedHfToken,
       runpod_endpoint_id: endpointId,
     })
     .eq('id', userId);
@@ -196,6 +205,7 @@ async function handlePost(
   res.status(200).json({
     runpod_key_last4: apiKey.slice(-4),
     runpod_endpoint_id: endpointId,
+    hf_token_last4: hfToken.slice(-4),
   });
 }
 
@@ -208,6 +218,7 @@ async function handleDelete(userId: string, res: VercelResponse): Promise<void> 
     .from('profiles')
     .update({
       runpod_api_key_encrypted: null,
+      hf_token_encrypted: null,
       runpod_endpoint_id: null,
     })
     .eq('id', userId);
@@ -220,5 +231,6 @@ async function handleDelete(userId: string, res: VercelResponse): Promise<void> 
   res.status(200).json({
     runpod_key_last4: null,
     runpod_endpoint_id: null,
+    hf_token_last4: null,
   });
 }
