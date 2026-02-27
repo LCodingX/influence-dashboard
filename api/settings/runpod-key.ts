@@ -73,10 +73,8 @@ async function handleGet(userId: string, res: VercelResponse): Promise<void> {
   }
 
   res.status(200).json({
-    compute_backend: 'runpod',
-    has_runpod_key: !!profile.runpod_api_key_encrypted,
-    key_last_four: keyLastFour,
-    endpoint_id: profile.runpod_endpoint_id || null,
+    runpod_key_last4: keyLastFour,
+    runpod_endpoint_id: profile.runpod_endpoint_id || null,
   });
 }
 
@@ -164,11 +162,8 @@ async function handlePost(
   }
 
   res.status(200).json({
-    success: true,
-    compute_backend: 'runpod',
-    has_runpod_key: true,
-    key_last_four: apiKey.slice(-4),
-    endpoint_id: endpointId,
+    runpod_key_last4: apiKey.slice(-4),
+    runpod_endpoint_id: endpointId,
   });
 }
 
@@ -191,10 +186,7 @@ async function handleDelete(userId: string, res: VercelResponse): Promise<void> 
   }
 
   res.status(200).json({
-    success: true,
-    compute_backend: 'runpod',
-    has_runpod_key: false,
-    key_last_four: null,
-    endpoint_id: null,
+    runpod_key_last4: null,
+    runpod_endpoint_id: null,
   });
 }
