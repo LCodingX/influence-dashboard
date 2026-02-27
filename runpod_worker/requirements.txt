@@ -1,0 +1,11 @@
+runpod>=1.6.0
+torch>=2.1.0
+transformers>=4.40.0
+peft>=0.10.0
+bitsandbytes>=0.43.0
+accelerate>=0.30.0
+datasets>=2.19.0
+pydantic>=2.7.0
+scipy>=1.13.0
+sentencepiece
+protobuf

@@ -1,0 +1,32 @@
+name: Publish RunPod Worker
+
+on:
+  push:
+    paths:
+      - 'core/**'
+      - 'runpod_worker/**'
+    branches: [main, master]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: runpod_worker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/influence-worker:latest
+            ghcr.io/${{ github.repository }}/influence-worker:${{ github.sha }}
