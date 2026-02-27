@@ -71,7 +71,9 @@ def handler(job: dict[str, Any]) -> Generator[dict[str, Any], None, dict[str, An
         # 1. Load model
         # --------------------------------------------------------------
         model, tokenizer = load_model_and_tokenizer(
-            req.model_id, quantization=req.hyperparams.quantization
+            req.model_id,
+            quantization=req.hyperparams.quantization,
+            hf_token=req.hf_token,
         )
 
         # --------------------------------------------------------------

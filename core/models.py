@@ -51,12 +51,22 @@ def load_model_and_tokenizer(
     model_id: str,
     quantization: Literal["4bit", "8bit", "none"] = "4bit",
     device_map: str = "auto",
+    hf_token: Optional[str] = None,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
     """Download and load an HF causal-LM with optional quantisation.
 
+    Parameters
+    ----------
+    hf_token:
+        HuggingFace access token for gated models (e.g. Gemma, Llama).
+
     Returns ``(model, tokenizer)`` ready for LoRA adapter attachment.
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    token = hf_token or None  # normalise empty string to None
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id, trust_remote_code=True, token=token
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -66,6 +76,9 @@ def load_model_and_tokenizer(
         "trust_remote_code": True,
         "torch_dtype": torch.bfloat16,
     }
+
+    if token:
+        kwargs["token"] = token
 
     if quantization == "4bit":
         kwargs["quantization_config"] = BitsAndBytesConfig(

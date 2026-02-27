@@ -48,6 +48,7 @@ class TrainRequest(BaseModel):
     eval_data: list[EvalQuestion]
     checkpoint_interval: int = 10
     callback_url: str
+    hf_token: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
