@@ -63,11 +63,6 @@ interface RunPodStreamEntry {
   };
 }
 
-interface RunPodCreateEndpointResponse {
-  id: string;
-  name: string;
-}
-
 /**
  * Map RunPod job statuses to our internal status strings.
  */

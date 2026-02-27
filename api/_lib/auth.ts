@@ -1,6 +1,6 @@
 import type { VercelRequest } from '@vercel/node';
 import type { User } from '@supabase/supabase-js';
-import { supabaseAdmin } from './supabase-admin';
+import { supabaseAdmin } from './supabase-admin.js';
 
 /**
  * Verify the Supabase JWT from the Authorization header.

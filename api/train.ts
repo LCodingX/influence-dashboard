@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from './_lib/auth';
-import { supabaseAdmin } from './_lib/supabase-admin';
-import { RunPodBackend } from './_lib/runpod';
-import { decrypt } from './_lib/encryption';
+import { verifyAuth } from './_lib/auth.js';
+import { supabaseAdmin } from './_lib/supabase-admin.js';
+import { RunPodBackend } from './_lib/runpod.js';
+import { decrypt } from './_lib/encryption.js';
 
 interface TrainRequestBody {
   model_id: string;

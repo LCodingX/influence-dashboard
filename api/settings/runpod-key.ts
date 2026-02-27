@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_lib/auth';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { encrypt, decrypt } from '../_lib/encryption';
-import { RunPodBackend } from '../_lib/runpod';
+import { verifyAuth } from '../_lib/auth.js';
+import { supabaseAdmin } from '../_lib/supabase-admin.js';
+import { encrypt, decrypt } from '../_lib/encryption.js';
+import { RunPodBackend } from '../_lib/runpod.js';
 
 interface PostBody {
   api_key: string;

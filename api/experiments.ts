@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from './_lib/auth';
-import { supabaseAdmin } from './_lib/supabase-admin';
+import { verifyAuth } from './_lib/auth.js';
+import { supabaseAdmin } from './_lib/supabase-admin.js';
 
 interface ExperimentBody {
   id?: string;
