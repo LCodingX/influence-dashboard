@@ -74,7 +74,9 @@ async function handleGet(userId: string, res: VercelResponse): Promise<void> {
 
 /**
  * POST /api/settings/hf-token
- * Validate a HuggingFace token, encrypt and store it.
+ * Encrypt and store a HuggingFace token. Token is validated at point of use
+ * (when the worker downloads model weights), not upfront, since the whoami
+ * API does not reliably work with all token types (e.g. fine-grained tokens).
  */
 async function handlePost(
   userId: string,
@@ -89,27 +91,6 @@ async function handlePost(
   }
 
   const token = body.token.trim();
-
-  // Validate the token by calling HuggingFace API
-  try {
-    const response = await fetch('https://huggingface.co/api/whoami', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        res.status(400).json({ error: 'Invalid HuggingFace token' });
-        return;
-      }
-      res.status(400).json({ error: `HuggingFace API returned status ${response.status}` });
-      return;
-    }
-  } catch (validationError) {
-    const message =
-      validationError instanceof Error ? validationError.message : 'Failed to validate HuggingFace token';
-    res.status(400).json({ error: message });
-    return;
-  }
 
   // Encrypt and store
   const encryptedToken = encrypt(token);
