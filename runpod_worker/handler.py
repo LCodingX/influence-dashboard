@@ -52,10 +52,12 @@ def handler(job: dict[str, Any]) -> Generator[dict[str, Any], None, dict[str, An
     try:
         req = TrainRequest(**job_input)
     except Exception as e:
-        return {
+        error_payload = {
             "error": f"Invalid request: {e}",
             "suggestion": "Check the request payload matches the TrainRequest schema.",
         }
+        yield error_payload
+        return error_payload
 
     total_epochs = req.hyperparams.num_epochs
 
@@ -264,22 +266,26 @@ def handler(job: dict[str, Any]) -> Generator[dict[str, Any], None, dict[str, An
 
     except torch.cuda.OutOfMemoryError:
         traceback.print_exc()
-        return {
+        error_payload = {
             "error": "GPU out of memory",
             "suggestion": (
                 "Try reducing batch_size, max_seq_length, or lora_rank. "
                 "You can also switch to 4-bit quantization or use a smaller model."
             ),
         }
+        yield error_payload
+        return error_payload
 
     except Exception as e:
         traceback.print_exc()
-        return {
+        error_payload = {
             "error": str(e),
             "suggestion": (
                 "Check the logs for details. The error traceback is printed above."
             ),
         }
+        yield error_payload
+        return error_payload
 
 
 # ---------------------------------------------------------------------------
