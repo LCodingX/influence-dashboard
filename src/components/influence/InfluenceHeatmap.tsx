@@ -46,6 +46,16 @@ function scoreToColor(score: number, absMax: number): string {
   }
 }
 
+function isValidMatrix(data: InfluenceMatrix | null): data is InfluenceMatrix {
+  return (
+    data !== null &&
+    Array.isArray(data.scores) &&
+    data.scores.length > 0 &&
+    Array.isArray(data.training_labels) &&
+    Array.isArray(data.eval_labels)
+  );
+}
+
 export function InfluenceHeatmap({ data, onCellClick }: InfluenceHeatmapProps) {
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
@@ -56,8 +66,10 @@ export function InfluenceHeatmap({ data, onCellClick }: InfluenceHeatmapProps) {
     score: 0,
   });
 
+  const valid = isValidMatrix(data);
+
   const absMax = useMemo(() => {
-    if (!data) return 0;
+    if (!valid) return 0;
     let max = 0;
     for (const row of data.scores) {
       for (const val of row) {
@@ -66,11 +78,11 @@ export function InfluenceHeatmap({ data, onCellClick }: InfluenceHeatmapProps) {
       }
     }
     return max;
-  }, [data]);
+  }, [data, valid]);
 
   const handleMouseEnter = useCallback(
     (e: React.MouseEvent, trainIdx: number, evalIdx: number) => {
-      if (!data) return;
+      if (!valid) return;
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       setTooltip({
         visible: true,
@@ -81,14 +93,14 @@ export function InfluenceHeatmap({ data, onCellClick }: InfluenceHeatmapProps) {
         score: data.scores[trainIdx][evalIdx],
       });
     },
-    [data]
+    [data, valid]
   );
 
   const handleMouseLeave = useCallback(() => {
     setTooltip((prev) => ({ ...prev, visible: false }));
   }, []);
 
-  if (!data) {
+  if (!valid) {
     return (
       <div className="flex items-center justify-center h-64 bg-navy-800 rounded-lg border border-navy-700">
         <p className="text-slate-400 text-sm">

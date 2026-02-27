@@ -50,6 +50,7 @@ export function DashboardPage() {
   const [training, setTraining] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [savingExperiment, setSavingExperiment] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [selectedCell, setSelectedCell] = useState<{
     trainIdx: number;
@@ -94,6 +95,7 @@ export function DashboardPage() {
   const handleSaveExperiment = useCallback(
     async (name: string, description: string) => {
       setSavingExperiment(true);
+      setSaveError(null);
       try {
         await apiCall('/api/experiments', {
           method: 'POST',
@@ -108,8 +110,8 @@ export function DashboardPage() {
           }),
         });
         setSaveDialogOpen(false);
-      } catch {
-        // Error handled by apiCall throwing
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Failed to save experiment');
       } finally {
         setSavingExperiment(false);
       }
@@ -135,6 +137,34 @@ export function DashboardPage() {
 
   const rightPanel = (
     <div className="flex flex-col gap-6">
+      {/* Action buttons at the top */}
+      <div className="flex gap-3">
+        <Button
+          variant="primary"
+          icon={<Play className="h-4 w-4" />}
+          onClick={handleTrain}
+          loading={training || isJobActive}
+          disabled={training || isJobActive}
+        >
+          {isJobActive ? 'Training...' : 'Train & Compute Influence'}
+        </Button>
+        <Button
+          variant="secondary"
+          icon={<Save className="h-4 w-4" />}
+          onClick={() => setSaveDialogOpen(true)}
+        >
+          Save Experiment
+        </Button>
+      </div>
+
+      {trainError && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
+          {trainError}
+        </div>
+      )}
+
+      {job && <JobStatus job={job} />}
+
       <TrainingPanel pairs={trainingData} onChange={setTrainingData} />
 
       <div className="space-y-4">
@@ -156,33 +186,6 @@ export function DashboardPage() {
         numTrainingExamples={trainingData.length}
         numEvalExamples={evalData.length}
       />
-
-      {trainError && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
-          {trainError}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <Button
-          variant="primary"
-          icon={<Play className="h-4 w-4" />}
-          onClick={handleTrain}
-          loading={training || isJobActive}
-          disabled={training || isJobActive}
-        >
-          {isJobActive ? 'Training...' : 'Train & Compute Influence'}
-        </Button>
-        <Button
-          variant="secondary"
-          icon={<Save className="h-4 w-4" />}
-          onClick={() => setSaveDialogOpen(true)}
-        >
-          Save Experiment
-        </Button>
-      </div>
-
-      {job && <JobStatus job={job} />}
     </div>
   );
 
@@ -236,6 +239,7 @@ export function DashboardPage() {
         onClose={() => setSaveDialogOpen(false)}
         onSave={handleSaveExperiment}
         saving={savingExperiment}
+        error={saveError}
       />
     </div>
   );

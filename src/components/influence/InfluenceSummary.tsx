@@ -36,7 +36,8 @@ function truncate(str: string, max: number = MAX_LABEL_LEN): string {
 
 export function InfluenceSummary({ data }: InfluenceSummaryProps) {
   const stats = useMemo(() => {
-    if (!data || data.scores.length === 0) return null;
+    if (!data || !Array.isArray(data.scores) || data.scores.length === 0) return null;
+    if (!Array.isArray(data.training_labels) || !Array.isArray(data.eval_labels)) return null;
 
     const numRows = data.scores.length;
     const numCols = data.scores[0].length;

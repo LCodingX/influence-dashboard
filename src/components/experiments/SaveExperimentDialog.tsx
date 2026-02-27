@@ -6,6 +6,7 @@ interface SaveExperimentDialogProps {
   onClose: () => void;
   onSave: (name: string, description: string) => void;
   saving: boolean;
+  error?: string | null;
 }
 
 export function SaveExperimentDialog({
@@ -13,6 +14,7 @@ export function SaveExperimentDialog({
   onClose,
   onSave,
   saving,
+  error,
 }: SaveExperimentDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -78,6 +80,13 @@ export function SaveExperimentDialog({
             <X size={16} />
           </button>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

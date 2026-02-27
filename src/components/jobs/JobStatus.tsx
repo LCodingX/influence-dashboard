@@ -68,7 +68,7 @@ const STATUS_CONFIG: Record<
 };
 
 function formatETA(seconds: number): string {
-  if (seconds <= 0) return '--';
+  if (!isFinite(seconds) || seconds <= 0) return '--';
   if (seconds < 60) return `${Math.round(seconds)}s`;
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
@@ -97,9 +97,22 @@ export function JobStatus({ job }: JobStatusProps) {
     );
   }
 
-  const config = STATUS_CONFIG[job.status];
+  const config = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.queued;
   const StatusIcon = config.icon;
-  const progressPercent = Math.round(job.progress * 100);
+
+  // Force 100% when completed, 0% when failed, otherwise use reported progress
+  const rawProgress = job.progress ?? 0;
+  const progressPercent =
+    job.status === 'completed'
+      ? 100
+      : job.status === 'failed'
+        ? Math.round(rawProgress * 100)
+        : Math.round(rawProgress * 100);
+
+  const hasEpochData =
+    job.total_epochs != null && job.total_epochs > 0 && job.current_epoch != null;
+  const hasLossData =
+    job.training_loss != null && job.training_loss > 0;
 
   return (
     <div className="bg-navy-800 rounded-lg border border-navy-700 p-4">
@@ -133,62 +146,61 @@ export function JobStatus({ job }: JobStatusProps) {
         />
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Epoch */}
-        {job.current_epoch !== null && job.total_epochs !== null && (
-          <div>
-            <span className="text-[10px] text-slate-600 uppercase tracking-wider">
-              Epoch
-            </span>
-            <p className="text-sm font-mono text-slate-200">
-              {job.current_epoch}
-              <span className="text-slate-500">/{job.total_epochs}</span>
-            </p>
-          </div>
-        )}
+      {/* Stats grid — only show metrics that have real data */}
+      {(hasEpochData || hasLossData) && (
+        <div className="grid grid-cols-2 gap-3">
+          {hasEpochData && (
+            <div>
+              <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                Epoch
+              </span>
+              <p className="text-sm font-mono text-slate-200">
+                {job.current_epoch}
+                <span className="text-slate-500">/{job.total_epochs}</span>
+              </p>
+            </div>
+          )}
 
-        {/* Training loss */}
-        {job.training_loss !== null && (
-          <div>
-            <span className="text-[10px] text-slate-600 uppercase tracking-wider">
-              Loss
-            </span>
-            <p className="text-sm font-mono text-slate-200">
-              {job.training_loss.toFixed(4)}
-            </p>
-          </div>
-        )}
+          {hasLossData && (
+            <div>
+              <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                Loss
+              </span>
+              <p className="text-sm font-mono text-slate-200">
+                {job.training_loss!.toFixed(4)}
+              </p>
+            </div>
+          )}
 
-        {/* ETA - computed from progress */}
-        {job.status !== 'completed' && job.status !== 'failed' && job.progress > 0 && (
-          <div>
-            <span className="text-[10px] text-slate-600 uppercase tracking-wider">
-              ETA
-            </span>
-            <p className="text-sm font-mono text-slate-200">
-              {(() => {
-                const elapsed =
-                  (new Date().getTime() - new Date(job.created_at).getTime()) / 1000;
-                const estimated = elapsed / job.progress - elapsed;
-                return formatETA(estimated);
-              })()}
-            </p>
-          </div>
-        )}
+          {/* ETA - only when actively running with progress */}
+          {job.status !== 'completed' && job.status !== 'failed' && rawProgress > 0 && job.created_at && (
+            <div>
+              <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                ETA
+              </span>
+              <p className="text-sm font-mono text-slate-200">
+                {(() => {
+                  const elapsed =
+                    (new Date().getTime() - new Date(job.created_at).getTime()) / 1000;
+                  const estimated = elapsed / rawProgress - elapsed;
+                  return formatETA(estimated);
+                })()}
+              </p>
+            </div>
+          )}
 
-        {/* Cost */}
-        {job.estimated_cost_usd !== null && (
-          <div>
-            <span className="text-[10px] text-slate-600 uppercase tracking-wider">
-              Est. Cost
-            </span>
-            <p className="text-sm font-mono text-slate-200">
-              ${job.estimated_cost_usd.toFixed(2)}
-            </p>
-          </div>
-        )}
-      </div>
+          {job.estimated_cost_usd != null && (
+            <div>
+              <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                Est. Cost
+              </span>
+              <p className="text-sm font-mono text-slate-200">
+                ${job.estimated_cost_usd.toFixed(2)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error message */}
       {job.status === 'failed' && job.error && (

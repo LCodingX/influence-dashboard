@@ -19,6 +19,9 @@ export default async function handler(
     return;
   }
 
+  // Prevent caching
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
   try {
     // Verify authentication
     const user = await verifyAuth(req);
@@ -46,13 +49,9 @@ export default async function handler(
       return;
     }
 
-    // If results are already cached, return them
+    // If results are already cached, return them directly
     if (job.results) {
-      res.status(200).json({
-        job_id: job.id,
-        status: job.status,
-        results: job.results,
-      });
+      res.status(200).json(job.results);
       return;
     }
 
@@ -108,11 +107,7 @@ export default async function handler(
       })
       .eq('id', jobId);
 
-    res.status(200).json({
-      job_id: job.id,
-      status: job.status,
-      results: backendResults,
-    });
+    res.status(200).json(backendResults);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
     res.status(500).json({ error: message });

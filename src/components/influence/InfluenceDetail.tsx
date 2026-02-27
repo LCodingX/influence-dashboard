@@ -15,12 +15,13 @@ export function InfluenceDetail({
   evalIndex,
   onClose,
 }: InfluenceDetailProps) {
-  const score = matrix.scores[trainIndex][evalIndex];
-  const trainLabel = matrix.training_labels[trainIndex];
-  const evalLabel = matrix.eval_labels[evalIndex];
+  const score = matrix.scores?.[trainIndex]?.[evalIndex] ?? 0;
+  const trainLabel = matrix.training_labels?.[trainIndex] ?? `Training #${trainIndex + 1}`;
+  const evalLabel = matrix.eval_labels?.[evalIndex] ?? `Eval #${evalIndex + 1}`;
 
   const rank = useMemo(() => {
-    const column = matrix.scores.map((row) => row[evalIndex]);
+    if (!Array.isArray(matrix.scores)) return 1;
+    const column = matrix.scores.map((row) => row?.[evalIndex] ?? 0);
     const sorted = [...column]
       .map((s, idx) => ({ score: Math.abs(s), idx }))
       .sort((a, b) => b.score - a.score);
@@ -28,7 +29,7 @@ export function InfluenceDetail({
     return position + 1;
   }, [matrix, trainIndex, evalIndex]);
 
-  const totalTraining = matrix.training_labels.length;
+  const totalTraining = matrix.training_labels?.length ?? 0;
 
   const scoreSign = score > 0 ? 'positive' : score < 0 ? 'negative' : 'neutral';
 

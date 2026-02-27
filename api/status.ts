@@ -19,6 +19,9 @@ export default async function handler(
     return;
   }
 
+  // Prevent caching of status responses (avoids 304 on polling)
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
   try {
     // Verify authentication
     const user = await verifyAuth(req);
@@ -46,22 +49,13 @@ export default async function handler(
       return;
     }
 
-    // If job is in a terminal state, return cached data
+    // If job is in a terminal state, return the full record as-is
     if (job.status === 'completed' || job.status === 'failed') {
-      res.status(200).json({
-        job_id: job.id,
-        status: job.status,
-        progress: job.progress,
-        current_epoch: job.current_epoch,
-        total_epochs: job.total_epochs,
-        training_loss: job.training_loss,
-        error: job.error,
-        eta_seconds: 0,
-      });
+      res.status(200).json(job);
       return;
     }
 
-    // If we have a RunPod job ID, fetch live status
+    // If we have a RunPod job ID, fetch live status and merge into the record
     const runpodJobId = job.runpod_job_id as string | null;
 
     if (runpodJobId) {
@@ -73,15 +67,10 @@ export default async function handler(
           .single();
 
         if (!profile?.runpod_api_key_encrypted || !profile?.runpod_endpoint_id) {
+          // Return job as-is with a warning
           res.status(200).json({
-            job_id: job.id,
-            status: job.status,
-            progress: job.progress,
-            current_epoch: job.current_epoch,
-            total_epochs: job.total_epochs,
-            training_loss: job.training_loss,
-            eta_seconds: null,
-            warning: 'RunPod credentials not found. Cannot fetch live status.',
+            ...job,
+            _warning: 'RunPod credentials not found. Cannot fetch live status.',
           });
           return;
         }
@@ -111,27 +100,17 @@ export default async function handler(
           .update(updateData)
           .eq('id', jobId);
 
+        // Return the full job record merged with live data
         res.status(200).json({
-          job_id: job.id,
-          status: liveStatus.status,
-          progress: liveStatus.progress,
-          current_epoch: liveStatus.current_epoch,
-          total_epochs: liveStatus.total_epochs,
-          training_loss: liveStatus.training_loss,
-          eta_seconds: liveStatus.eta_seconds,
+          ...job,
+          ...updateData,
         });
         return;
       } catch (backendError) {
-        // If backend is unreachable, return cached data with a warning
+        // If backend is unreachable, return the cached job with a warning
         res.status(200).json({
-          job_id: job.id,
-          status: job.status,
-          progress: job.progress,
-          current_epoch: job.current_epoch,
-          total_epochs: job.total_epochs,
-          training_loss: job.training_loss,
-          eta_seconds: null,
-          warning: `Could not reach RunPod backend for live status: ${
+          ...job,
+          _warning: `Could not reach RunPod backend for live status: ${
             backendError instanceof Error ? backendError.message : 'Unknown error'
           }`,
         });
@@ -139,16 +118,8 @@ export default async function handler(
       }
     }
 
-    // No RunPod job ID yet -- return queued status
-    res.status(200).json({
-      job_id: job.id,
-      status: job.status,
-      progress: job.progress,
-      current_epoch: job.current_epoch,
-      total_epochs: job.total_epochs,
-      training_loss: job.training_loss,
-      eta_seconds: null,
-    });
+    // No RunPod job ID yet -- return the full job record as-is
+    res.status(200).json(job);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
     res.status(500).json({ error: message });

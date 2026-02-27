@@ -12,10 +12,10 @@ export interface TrainJobConfig {
 export interface JobStatusResult {
   status: string;
   progress: number;
-  current_epoch: number;
-  total_epochs: number;
-  training_loss: number;
-  eta_seconds: number;
+  current_epoch: number | null;
+  total_epochs: number | null;
+  training_loss: number | null;
+  eta_seconds: number | null;
 }
 
 export interface JobResultsData {
@@ -171,10 +171,10 @@ export class RunPodBackend {
           return {
             status: latest.output.status || 'training',
             progress: latest.output.progress ?? 0,
-            current_epoch: latest.output.current_epoch ?? 0,
-            total_epochs: latest.output.total_epochs ?? 0,
-            training_loss: latest.output.training_loss ?? 0,
-            eta_seconds: latest.output.eta_seconds ?? 0,
+            current_epoch: latest.output.current_epoch ?? null,
+            total_epochs: latest.output.total_epochs ?? null,
+            training_loss: latest.output.training_loss ?? null,
+            eta_seconds: latest.output.eta_seconds ?? null,
           };
         }
       }
@@ -192,10 +192,10 @@ export class RunPodBackend {
     return {
       status: mappedStatus,
       progress: statusResponse.output?.progress ?? (mappedStatus === 'completed' ? 1 : 0),
-      current_epoch: statusResponse.output?.current_epoch ?? 0,
-      total_epochs: statusResponse.output?.total_epochs ?? 0,
-      training_loss: statusResponse.output?.training_loss ?? 0,
-      eta_seconds: statusResponse.output?.eta_seconds ?? 0,
+      current_epoch: statusResponse.output?.current_epoch ?? null,
+      total_epochs: statusResponse.output?.total_epochs ?? null,
+      training_loss: statusResponse.output?.training_loss ?? null,
+      eta_seconds: statusResponse.output?.eta_seconds ?? null,
     };
   }
 
