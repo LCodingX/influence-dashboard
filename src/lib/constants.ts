@@ -1,4 +1,4 @@
-import type { ModelInfo, Hyperparams, InfluenceMethod } from './types';
+import type { ModelInfo, ModelTier, Hyperparams, InfluenceMethod, RunPodGpuId } from './types';
 
 export const MODELS: ModelInfo[] = [
   { id: 'google/gemma-3-1b', name: 'Gemma 3 1B', params: '1B', tier: 'small', gpu: 'A10 24GB', costPerHour: 1.12 },
@@ -62,3 +62,16 @@ export const TIER_BADGES: Record<string, { label: string; color: string }> = {
 };
 
 export const DEFAULT_CHECKPOINT_INTERVAL = 10;
+
+export const GPU_TYPES: { id: RunPodGpuId; label: string; vram: string; costPerHour: number }[] = [
+  { id: 'AMPERE_16', label: 'A10 24GB', vram: '24 GB', costPerHour: 1.12 },
+  { id: 'AMPERE_48', label: 'L40S 48GB', vram: '48 GB', costPerHour: 2.48 },
+  { id: 'AMPERE_80', label: 'A100 80GB', vram: '80 GB', costPerHour: 5.00 },
+];
+
+export const TIER_COMPATIBLE_GPUS: Record<ModelTier, RunPodGpuId[]> = {
+  small: ['AMPERE_16', 'AMPERE_48', 'AMPERE_80'],
+  medium: ['AMPERE_48', 'AMPERE_80'],
+  large: ['AMPERE_80'],
+  xl: ['AMPERE_80'],
+};

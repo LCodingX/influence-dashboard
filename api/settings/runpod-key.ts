@@ -172,6 +172,27 @@ async function handlePost(
     return;
   }
 
+  // Auto-create a default device if an endpoint was created and no devices exist yet
+  if (endpointId) {
+    const { count } = await supabaseAdmin
+      .from('devices')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if ((count ?? 0) === 0) {
+      await supabaseAdmin
+        .from('devices')
+        .insert({
+          user_id: userId,
+          name: 'Default GPU',
+          endpoint_id: endpointId,
+          gpu_id: 'AMPERE_48',
+          gpu_display: 'L40S 48GB',
+          is_default: true,
+        });
+    }
+  }
+
   res.status(200).json({
     runpod_key_last4: apiKey.slice(-4),
     runpod_endpoint_id: endpointId,

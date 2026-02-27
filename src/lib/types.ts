@@ -104,6 +104,7 @@ export interface Job {
   id: string;
   user_id: string;
   experiment_id: string | null;
+  device_id: string | null;
   status: JobStatus;
   progress: number;
   current_epoch: number | null;
@@ -135,6 +136,7 @@ export interface TrainRequest {
   influence_method: InfluenceMethod;
   checkpoint_interval: number;
   experiment_id?: string;
+  device_id?: string;
 }
 
 export interface UserProfile {
@@ -148,4 +150,36 @@ export interface ComputeSettings {
   runpod_key_last4: string | null;
   runpod_endpoint_id: string | null;
   hf_token_last4: string | null;
+}
+
+// Job logging types
+export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+export type LogPhase = 'system' | 'model_loading' | 'training' | 'influence' | 'eval';
+
+export interface JobLogEntry {
+  id: number;
+  job_id: string;
+  seq: number;
+  timestamp: string;
+  level: LogLevel;
+  phase: LogPhase | null;
+  message: string;
+  metadata: Record<string, unknown> | null;
+}
+
+// Multi-GPU device types
+export type RunPodGpuId = 'AMPERE_16' | 'AMPERE_48' | 'AMPERE_80';
+
+export interface Device {
+  id: string;
+  user_id: string;
+  name: string;
+  endpoint_id: string;
+  gpu_id: RunPodGpuId;
+  gpu_display: string;
+  workers_min: number;
+  workers_max: number;
+  idle_timeout: number;
+  is_default: boolean;
+  created_at: string;
 }

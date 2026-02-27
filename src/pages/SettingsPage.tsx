@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BackendConfig } from '@/components/config/BackendConfig';
 import { HuggingFaceConfig } from '@/components/config/HuggingFaceConfig';
+import { DeviceManager } from '@/components/config/DeviceManager';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -49,6 +50,9 @@ export function SettingsPage() {
               loading={settingsLoading}
               onRefresh={refreshSettings}
             />
+
+            {/* GPU Devices section — only show when RunPod key is configured */}
+            {settings?.runpod_key_last4 && <DeviceManager />}
 
             {/* HuggingFace Token section */}
             <HuggingFaceConfig

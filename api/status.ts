@@ -2,7 +2,75 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAuth } from './_lib/auth.js';
 import { supabaseAdmin } from './_lib/supabase-admin.js';
 import { RunPodBackend } from './_lib/runpod.js';
+import type { StreamLogEntry } from './_lib/runpod.js';
 import { decrypt } from './_lib/encryption.js';
+
+/**
+ * Resolve the RunPod endpoint ID for a job.
+ * Priority: job.device_id → devices table → fallback to profile.runpod_endpoint_id
+ */
+async function resolveEndpointId(
+  userId: string,
+  deviceId: string | null
+): Promise<string | null> {
+  if (deviceId) {
+    const { data: device } = await supabaseAdmin
+      .from('devices')
+      .select('endpoint_id')
+      .eq('id', deviceId)
+      .eq('user_id', userId)
+      .single();
+    if (device?.endpoint_id) return device.endpoint_id as string;
+  }
+
+  // Fallback to profile for legacy jobs
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('runpod_endpoint_id')
+    .eq('id', userId)
+    .single();
+
+  return (profile?.runpod_endpoint_id as string) ?? null;
+}
+
+/**
+ * Persist new log entries from the RunPod stream into the job_logs table.
+ */
+async function persistLogs(
+  jobId: string,
+  userId: string,
+  logs: StreamLogEntry[],
+  currentCursor: number
+): Promise<number> {
+  const newLogs = logs.filter((l) => l.seq > currentCursor);
+  if (newLogs.length === 0) return currentCursor;
+
+  const rows = newLogs.map((l) => ({
+    job_id: jobId,
+    user_id: userId,
+    seq: l.seq,
+    timestamp: l.timestamp,
+    level: l.level,
+    phase: l.phase,
+    message: l.message,
+    metadata: l.metadata,
+  }));
+
+  // Upsert to handle duplicates gracefully
+  await supabaseAdmin
+    .from('job_logs')
+    .upsert(rows, { onConflict: 'job_id,seq', ignoreDuplicates: true });
+
+  const maxSeq = Math.max(...newLogs.map((l) => l.seq));
+
+  // Update the cursor on the job
+  await supabaseAdmin
+    .from('jobs')
+    .update({ log_seq_cursor: maxSeq })
+    .eq('id', jobId);
+
+  return maxSeq;
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -60,14 +128,14 @@ export default async function handler(
 
     if (runpodJobId) {
       try {
+        // Get the user's RunPod API key
         const { data: profile } = await supabaseAdmin
           .from('profiles')
-          .select('runpod_api_key_encrypted, runpod_endpoint_id')
+          .select('runpod_api_key_encrypted')
           .eq('id', user.id)
           .single();
 
-        if (!profile?.runpod_api_key_encrypted || !profile?.runpod_endpoint_id) {
-          // Return job as-is with a warning
+        if (!profile?.runpod_api_key_encrypted) {
           res.status(200).json({
             ...job,
             _warning: 'RunPod credentials not found. Cannot fetch live status.',
@@ -75,12 +143,30 @@ export default async function handler(
           return;
         }
 
+        // Resolve endpoint from device or profile fallback
+        const endpointId = await resolveEndpointId(
+          user.id,
+          (job.device_id as string) ?? null
+        );
+
+        if (!endpointId) {
+          res.status(200).json({
+            ...job,
+            _warning: 'RunPod endpoint not found. Cannot fetch live status.',
+          });
+          return;
+        }
+
         const backend = new RunPodBackend({
           apiKey: decrypt(profile.runpod_api_key_encrypted as string),
-          endpointId: profile.runpod_endpoint_id as string,
+          endpointId,
         });
 
-        const liveStatus = await backend.getStatus(runpodJobId);
+        const { statusResult: liveStatus, logs } = await backend.getStreamWithLogs(runpodJobId);
+
+        // Persist any new log entries
+        const currentCursor = (job.log_seq_cursor as number) ?? 0;
+        await persistLogs(jobId, user.id, logs, currentCursor);
 
         // Update Supabase with latest status
         const updateData: Record<string, unknown> = {

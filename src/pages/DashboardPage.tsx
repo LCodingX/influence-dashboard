@@ -3,6 +3,7 @@ import { Play, Save } from 'lucide-react';
 import { useDashboardStore } from '@/store/store';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobPolling } from '@/hooks/useJobPolling';
+import { useJobLogs } from '@/hooks/useJobLogs';
 import { useInfluenceData } from '@/hooks/useInfluenceData';
 import { apiCall } from '@/lib/api';
 import { validateTrainingData, validateEvalData, validateModelId } from '@/lib/validation';
@@ -17,6 +18,7 @@ import { ResultsComparison } from '@/components/evaluation/ResultsComparison';
 import { ModelSelector } from '@/components/config/ModelSelector';
 import { HyperparamPanel } from '@/components/config/HyperparamPanel';
 import { InfluenceMethodSelector } from '@/components/config/InfluenceMethodSelector';
+import { DeviceSelector } from '@/components/config/DeviceSelector';
 import { CostEstimator } from '@/components/jobs/CostEstimator';
 import { JobStatus } from '@/components/jobs/JobStatus';
 import { InfluenceHeatmap } from '@/components/influence/InfluenceHeatmap';
@@ -35,6 +37,7 @@ export function DashboardPage() {
   const influenceMethod = useDashboardStore((s) => s.influenceMethod);
   const checkpointInterval = useDashboardStore((s) => s.checkpointInterval);
   const activeJobId = useDashboardStore((s) => s.activeJobId);
+  const deviceId = useDashboardStore((s) => s.deviceId);
 
   const setTrainingData = useDashboardStore((s) => s.setTrainingData);
   const setEvalData = useDashboardStore((s) => s.setEvalData);
@@ -42,8 +45,10 @@ export function DashboardPage() {
   const setHyperparams = useDashboardStore((s) => s.setHyperparams);
   const setInfluenceMethod = useDashboardStore((s) => s.setInfluenceMethod);
   const setActiveJobId = useDashboardStore((s) => s.setActiveJobId);
+  const setDeviceId = useDashboardStore((s) => s.setDeviceId);
 
   const { job } = useJobPolling(activeJobId);
+  const { logs } = useJobLogs(activeJobId, job?.status ?? null);
   const { results } = useInfluenceData(activeJobId, job?.status ?? null);
 
   const [trainError, setTrainError] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export function DashboardPage() {
         hyperparams,
         influence_method: influenceMethod,
         checkpoint_interval: checkpointInterval,
+        device_id: deviceId ?? undefined,
       };
       const res = await apiCall<{ job_id: string }>('/api/train', {
         method: 'POST',
@@ -90,7 +96,7 @@ export function DashboardPage() {
     } finally {
       setTraining(false);
     }
-  }, [trainingData, evalData, modelId, hyperparams, influenceMethod, checkpointInterval, setActiveJobId]);
+  }, [trainingData, evalData, modelId, hyperparams, influenceMethod, checkpointInterval, deviceId, setActiveJobId]);
 
   const handleSaveExperiment = useCallback(
     async (name: string, description: string) => {
@@ -163,7 +169,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      {job && <JobStatus job={job} />}
+      {job && <JobStatus job={job} logs={logs} />}
 
       <TrainingPanel pairs={trainingData} onChange={setTrainingData} />
 
@@ -172,6 +178,7 @@ export function DashboardPage() {
           Configuration
         </h2>
         <ModelSelector value={modelId} onChange={setModelId} />
+        <DeviceSelector modelId={modelId} value={deviceId} onChange={setDeviceId} />
         <HyperparamPanel value={hyperparams} onChange={setHyperparams} />
         <InfluenceMethodSelector
           value={influenceMethod}

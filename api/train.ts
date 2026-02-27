@@ -23,6 +23,7 @@ interface TrainRequestBody {
   influence_method: 'tracin' | 'datainf' | 'kronfluence';
   checkpoint_interval: number;
   experiment_id?: string;
+  device_id?: string;
 }
 
 export default async function handler(
@@ -111,10 +112,46 @@ export default async function handler(
       }
     }
 
-    const endpointId = profile.runpod_endpoint_id as string | null;
+    // Resolve endpoint ID: device_id → devices table → default device → profile fallback
+    let endpointId: string | null = null;
+    let resolvedDeviceId: string | null = null;
+
+    if (body.device_id) {
+      // Use specified device
+      const { data: device } = await supabaseAdmin
+        .from('devices')
+        .select('id, endpoint_id')
+        .eq('id', body.device_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!device) {
+        res.status(400).json({ error: 'Device not found' });
+        return;
+      }
+      endpointId = device.endpoint_id as string;
+      resolvedDeviceId = device.id as string;
+    } else {
+      // Try default device
+      const { data: defaultDevice } = await supabaseAdmin
+        .from('devices')
+        .select('id, endpoint_id')
+        .eq('user_id', user.id)
+        .eq('is_default', true)
+        .single();
+
+      if (defaultDevice) {
+        endpointId = defaultDevice.endpoint_id as string;
+        resolvedDeviceId = defaultDevice.id as string;
+      } else {
+        // Fallback to profile endpoint (legacy)
+        endpointId = profile.runpod_endpoint_id as string | null;
+      }
+    }
+
     if (!endpointId) {
       res.status(400).json({
-        error: 'RunPod endpoint not configured. Please set up your endpoint in settings.',
+        error: 'No GPU device configured. Please add a device in settings.',
       });
       return;
     }
@@ -135,6 +172,7 @@ export default async function handler(
       .insert({
         user_id: user.id,
         experiment_id: body.experiment_id || null,
+        device_id: resolvedDeviceId,
         status: 'queued',
         progress: 0,
         config,

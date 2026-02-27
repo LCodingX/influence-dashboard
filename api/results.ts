@@ -84,7 +84,25 @@ export default async function handler(
       return;
     }
 
-    if (!profile?.runpod_endpoint_id) {
+    // Resolve endpoint from device or profile fallback
+    let endpointId: string | null = null;
+    const deviceId = job.device_id as string | null;
+    if (deviceId) {
+      const { data: device } = await supabaseAdmin
+        .from('devices')
+        .select('endpoint_id')
+        .eq('id', deviceId)
+        .eq('user_id', user.id)
+        .single();
+      if (device?.endpoint_id) {
+        endpointId = device.endpoint_id as string;
+      }
+    }
+    if (!endpointId) {
+      endpointId = (profile.runpod_endpoint_id as string) ?? null;
+    }
+
+    if (!endpointId) {
       res.status(500).json({
         error: 'RunPod endpoint not configured. Cannot fetch results.',
       });
@@ -93,7 +111,7 @@ export default async function handler(
 
     const backend = new RunPodBackend({
       apiKey: decrypt(profile.runpod_api_key_encrypted as string),
-      endpointId: profile.runpod_endpoint_id as string,
+      endpointId,
     });
 
     const backendResults = await backend.getResults(runpodJobId);

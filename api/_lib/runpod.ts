@@ -53,6 +53,15 @@ interface RunPodStatusResponse {
   error?: string;
 }
 
+export interface StreamLogEntry {
+  seq: number;
+  timestamp: string;
+  level: string;
+  phase: string | null;
+  message: string;
+  metadata: Record<string, unknown> | null;
+}
+
 interface RunPodStreamEntry {
   output?: {
     status?: string;
@@ -61,7 +70,13 @@ interface RunPodStreamEntry {
     total_epochs?: number;
     training_loss?: number;
     eta_seconds?: number;
+    logs?: StreamLogEntry[];
   };
+}
+
+export interface StreamWithLogsResult {
+  statusResult: JobStatusResult;
+  logs: StreamLogEntry[];
 }
 
 /**
@@ -159,18 +174,28 @@ export class RunPodBackend {
     return { jobId: response.id };
   }
 
-  async getStatus(jobId: string): Promise<JobStatusResult> {
-    // Try the /stream endpoint first for real-time progress updates
+  async getStreamWithLogs(jobId: string): Promise<StreamWithLogsResult> {
+    const allLogs: StreamLogEntry[] = [];
+    let statusResult: JobStatusResult | null = null;
+
+    // Try the /stream endpoint for real-time progress + logs
     try {
       const streamResponse = await this.callRunPod<RunPodStreamEntry[]>(
         `/stream/${jobId}`
       );
 
       if (streamResponse && streamResponse.length > 0) {
-        // Get the latest stream entry
+        // Collect logs from all stream entries
+        for (const entry of streamResponse) {
+          if (entry.output?.logs) {
+            allLogs.push(...entry.output.logs);
+          }
+        }
+
+        // Get status from the latest entry
         const latest = streamResponse[streamResponse.length - 1];
         if (latest.output) {
-          return {
+          statusResult = {
             status: latest.output.status || 'training',
             progress: latest.output.progress ?? 0,
             current_epoch: latest.output.current_epoch ?? null,
@@ -184,21 +209,28 @@ export class RunPodBackend {
       // Stream endpoint may not be available; fall back to /status
     }
 
-    // Fall back to the /status endpoint
-    const statusResponse = await this.callRunPod<RunPodStatusResponse>(
-      `/status/${jobId}`
-    );
+    // Fall back to /status if stream didn't give us a result
+    if (!statusResult) {
+      const statusResponse = await this.callRunPod<RunPodStatusResponse>(
+        `/status/${jobId}`
+      );
+      const mappedStatus = mapRunPodStatus(statusResponse.status);
+      statusResult = {
+        status: mappedStatus,
+        progress: statusResponse.output?.progress ?? (mappedStatus === 'completed' ? 1 : 0),
+        current_epoch: statusResponse.output?.current_epoch ?? null,
+        total_epochs: statusResponse.output?.total_epochs ?? null,
+        training_loss: statusResponse.output?.training_loss ?? null,
+        eta_seconds: statusResponse.output?.eta_seconds ?? null,
+      };
+    }
 
-    const mappedStatus = mapRunPodStatus(statusResponse.status);
+    return { statusResult, logs: allLogs };
+  }
 
-    return {
-      status: mappedStatus,
-      progress: statusResponse.output?.progress ?? (mappedStatus === 'completed' ? 1 : 0),
-      current_epoch: statusResponse.output?.current_epoch ?? null,
-      total_epochs: statusResponse.output?.total_epochs ?? null,
-      training_loss: statusResponse.output?.training_loss ?? null,
-      eta_seconds: statusResponse.output?.eta_seconds ?? null,
-    };
+  async getStatus(jobId: string): Promise<JobStatusResult> {
+    const { statusResult } = await this.getStreamWithLogs(jobId);
+    return statusResult;
   }
 
   async getResults(jobId: string): Promise<JobResultsData> {
@@ -231,22 +263,37 @@ export class RunPodBackend {
 
   /**
    * Create a new RunPod serverless endpoint for training jobs.
-   * This is called during first-time setup when a user configures their RunPod key.
+   * This is called during first-time setup when a user configures their RunPod key,
+   * or when adding additional GPU devices.
    */
   static async createEndpoint(
     apiKey: string,
     templateId: string,
-    name: string = 'influence-dashboard-training'
+    options: {
+      name?: string;
+      gpuIds?: string;
+      workersMin?: number;
+      workersMax?: number;
+      idleTimeout?: number;
+    } = {}
   ): Promise<string> {
+    const {
+      name = 'influence-dashboard-training',
+      gpuIds = 'AMPERE_48',
+      workersMin = 0,
+      workersMax = 1,
+      idleTimeout = 5,
+    } = options;
+
     const mutation = `
       mutation {
         saveEndpoint(input: {
           name: "${name}"
           templateId: "${templateId}"
-          workersMin: 0
-          workersMax: 1
-          idleTimeout: 5
-          gpuIds: "AMPERE_48"
+          workersMin: ${workersMin}
+          workersMax: ${workersMax}
+          idleTimeout: ${idleTimeout}
+          gpuIds: "${gpuIds}"
           scalerType: "QUEUE_DELAY"
           scalerValue: 1
         }) {
@@ -282,6 +329,37 @@ export class RunPodBackend {
     }
 
     return data.data.saveEndpoint.id;
+  }
+
+  /**
+   * Delete a RunPod serverless endpoint.
+   */
+  static async deleteEndpoint(apiKey: string, endpointId: string): Promise<void> {
+    const mutation = `
+      mutation {
+        deleteEndpoint(id: "${endpointId}")
+      }
+    `;
+
+    const response = await fetch('https://api.runpod.io/graphql?api_key=' + apiKey, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: mutation }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete RunPod endpoint: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as {
+      errors?: Array<{ message: string }>;
+    };
+
+    if (data.errors && data.errors.length > 0) {
+      throw new Error(`Failed to delete RunPod endpoint: ${data.errors[0].message}`);
+    }
   }
 
   /**

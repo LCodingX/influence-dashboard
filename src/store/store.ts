@@ -17,6 +17,7 @@ interface DashboardState {
   checkpointInterval: number;
   activeJobId: string | null;
   selectedExperimentId: string | null;
+  deviceId: string | null;
 
   setTrainingData: (data: QAPair[]) => void;
   addTrainingPair: (pair: QAPair) => void;
@@ -34,6 +35,7 @@ interface DashboardState {
   setCheckpointInterval: (interval: number) => void;
   setActiveJobId: (id: string | null) => void;
   setSelectedExperimentId: (id: string | null) => void;
+  setDeviceId: (id: string | null) => void;
 
   loadExperiment: (experiment: Experiment) => void;
   reset: () => void;
@@ -48,6 +50,7 @@ const initialState = {
   checkpointInterval: DEFAULT_CHECKPOINT_INTERVAL,
   activeJobId: null as string | null,
   selectedExperimentId: null as string | null,
+  deviceId: null as string | null,
 };
 
 export const useDashboardStore = create<DashboardState>((set) => ({
@@ -93,6 +96,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   setCheckpointInterval: (interval) => set({ checkpointInterval: interval }),
   setActiveJobId: (id) => set({ activeJobId: id }),
   setSelectedExperimentId: (id) => set({ selectedExperimentId: id }),
+  setDeviceId: (id) => set({ deviceId: id }),
 
   loadExperiment: (experiment) =>
     set({

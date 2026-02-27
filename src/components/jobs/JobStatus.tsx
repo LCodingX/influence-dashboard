@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Loader2,
   CheckCircle2,
@@ -6,11 +7,16 @@ import {
   Zap,
   BarChart3,
   CircleDot,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
 } from 'lucide-react';
-import type { Job, JobStatus as JobStatusType } from '@/lib/types';
+import type { Job, JobStatus as JobStatusType, JobLogEntry } from '@/lib/types';
+import { JobLogViewer } from './JobLogViewer';
 
 interface JobStatusProps {
   job: Job | null;
+  logs?: JobLogEntry[];
 }
 
 const STATUS_CONFIG: Record<
@@ -80,7 +86,8 @@ function formatETA(seconds: number): string {
   return `${hours}h ${mins}m`;
 }
 
-export function JobStatus({ job }: JobStatusProps) {
+export function JobStatus({ job, logs = [] }: JobStatusProps) {
+  const [showLogs, setShowLogs] = useState(false);
   if (!job) {
     return (
       <div className="bg-navy-800 rounded-lg border border-navy-700 p-4">
@@ -208,6 +215,28 @@ export function JobStatus({ job }: JobStatusProps) {
           <p className="text-xs text-rose-300 font-mono leading-relaxed">
             {job.error}
           </p>
+        </div>
+      )}
+
+      {/* Collapsible log viewer */}
+      {logs.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowLogs((prev) => !prev)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            {showLogs ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            <Terminal size={12} />
+            <span>
+              {showLogs ? 'Hide' : 'Show'} logs ({logs.length} entries)
+            </span>
+          </button>
+          {showLogs && (
+            <div className="mt-2">
+              <JobLogViewer logs={logs} />
+            </div>
+          )}
         </div>
       )}
     </div>
