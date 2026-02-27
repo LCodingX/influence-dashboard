@@ -5,6 +5,7 @@ on:
     paths:
       - 'core/**'
       - 'runpod_worker/**'
+      - '.github/workflows/publish-worker.yml'
     branches: [main, master]
 
 jobs:
@@ -22,11 +23,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@v5
         with:
           context: .
           file: runpod_worker/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/influence-worker:latest
-            ghcr.io/${{ github.repository }}/influence-worker:${{ github.sha }}
+            ghcr.io/${{ steps.repo.outputs.name }}/influence-worker:latest
+            ghcr.io/${{ steps.repo.outputs.name }}/influence-worker:${{ github.sha }}
